@@ -1,0 +1,637 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Laberinto Táctil (Audio Mejorado)</title>
+    
+    <!-- Carga de Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                }
+            }
+        }
+    </script>
+    
+    <!-- Carga de Tone.js para los efectos de sonido -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+
+    <style>
+        /* Estilos base */
+        #maze-board {
+            display: grid;
+        }
+        .maze-cell {
+            box-sizing: border-box; 
+            border: 1px solid rgba(255, 255, 255, 0.05); 
+        }
+        /* Las paredes rojas peligrosas parpadean */
+        .danger-wall {
+            animation: pulse-red 1.5s infinite alternate;
+        }
+        @keyframes pulse-red {
+            from { background-color: #b91c1c; box-shadow: 0 0 5px #b91c1c; }
+            to { background-color: #ef4444; box-shadow: 0 0 15px #f87171; }
+        }
+        #player {
+            transition: left 0.1s linear, top 0.1s linear;
+        }
+        
+        /* ESTILOS DEL BOTÓN DE CONTROL AJUSTADOS (48px) */
+        .control-button {
+            /* TAMAÑO AJUSTADO: 48px */
+            width: 48px; 
+            height: 48px; 
+            @apply flex items-center justify-center 
+                   bg-gradient-to-br from-blue-500 to-blue-700 
+                   text-white rounded-lg 
+                   shadow-lg shadow-blue-500/50 
+                   transform hover:scale-105 
+                   transition duration-150 ease-in-out select-none;
+        }
+        .control-button:active {
+            @apply bg-gradient-to-br from-blue-700 to-blue-900 
+                   shadow-inner shadow-blue-900/50 
+                   scale-95; 
+        }
+        .control-button svg {
+            /* Tamaño del SVG ajustado al nuevo tamaño del botón */
+            @apply w-6 h-6 stroke-3; 
+        }
+
+        .player-win-animation {
+            animation: pulse-blue 0.5s infinite alternate;
+        }
+        @keyframes pulse-blue {
+            from { box-shadow: 0 0 5px #4299e1; }
+            to { box-shadow: 0 0 15px #4299e1, 0 0 25px rgba(66, 153, 225, 0.7); }
+        }
+        /* Estilos para la pantalla de victoria/derrota */
+        .overlay-screen {
+            animation: fadeIn 1s ease-out;
+            min-height: 400px;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: scale(0.95); }
+            to { opacity: 1; transform: scale(1); }
+        }
+        .trophy-emoji {
+            font-size: 8rem; 
+            animation: jump 1.5s infinite;
+            display: inline-block;
+        }
+        @keyframes jump {
+            0%, 20%, 50%, 80%, 100% { transform: translateY(0); }
+            40% { transform: translateY(-30px); }
+            60% { transform: translateY(-15px); }
+        }
+        body {
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+            user-select: none; 
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-gray-100 min-h-screen flex flex-col items-center justify-center p-4 font-sans">
+    
+    <header class="text-center mb-6">
+        <h1 class="text-3xl md:text-4xl font-bold text-green-400">Laberinto Peligroso</h1>
+        <p class="mt-1 text-gray-400 text-sm md:text-base">¡Cuidado! Algunos muros quitan vida. Meta amarilla.</p>
+    </header>    
+    
+    <main class="w-full max-w-md">
+        
+        <!-- PANTALLA DE JUEGO PRINCIPAL -->
+        <section id="game-section" class="flex flex-col gap-4 bg-gray-800 p-4 md:p-6 rounded-xl shadow-2xl items-center">
+            
+            <!-- Indicadores de Vidas y Nivel -->
+            <div class="flex justify-between w-full mb-2">
+                <div id="lives-display" class="text-3xl text-red-500 font-extrabold flex items-center space-x-1">
+                    <!-- Se llena con corazones en JS -->
+                </div>
+                <div id="level-display" class="text-2xl font-extrabold text-yellow-300">Nivel 1</div>
+            </div>
+
+            <article id="game-container" 
+                tabindex="0" 
+                class="border-4 border-gray-600 bg-gray-900 p-px relative rounded-lg flex-shrink-0 mx-auto focus:outline-none w-full"
+                style="max-width: 380px;">
+                
+                <div id="maze-board"></div>
+                <div id="player" class="bg-blue-500 rounded-full absolute z-10 shadow-lg shadow-blue-500/50"></div>
+            </article>
+            
+            <!-- Controles Táctiles (D-Pad) MÁS COMPACTOS -->
+            <div id="controls" class="flex flex-col items-center mt-4 p-6 bg-gray-700 rounded-xl w-full max-w-sm">
+                
+                <!-- UP Button -->
+                <button id="up" class="control-button mb-2">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M12 19V5M5 12L12 5L19 12"/>
+                    </svg>
+                </button>
+                
+                <div class="flex space-x-2">
+                    <!-- LEFT Button -->
+                    <button id="left" class="control-button">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M19 12H5M12 5L5 12L12 19"/>
+                        </svg>
+                    </button>
+                    
+                    <!-- Espaciador que coincide con el tamaño del botón -->
+                    <div class="w-[48px] h-[48px]"></div> 
+                    
+                    <!-- RIGHT Button -->
+                    <button id="right" class="control-button">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M5 12H19M12 5L19 12L12 19"/>
+                        </svg>
+                    </button>
+                </div>
+                
+                <!-- DOWN Button -->
+                <button id="down" class="control-button mt-2">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M12 5V19M19 12L12 19L5 12"/>
+                    </svg>
+                </button>
+            </div>
+
+            <!-- Mensajes de Estado -->
+            <aside id="game-sidebar" class="bg-gray-700 p-3 rounded-lg w-full mt-4">
+                <h3 class="text-lg font-semibold mb-2 text-yellow-300">Estado:</h3>
+                <div id="game-messages" class="text-base font-medium text-yellow-100 min-h-[24px]"></div>
+            </aside>
+            
+        </section>
+        
+        <!-- PANTALLA DE TROFEO (Victoria) -->
+        <section id="trophy-screen" class="hidden overlay-screen flex-col items-center justify-center p-8 bg-gradient-to-br from-yellow-900 to-yellow-600 rounded-xl shadow-2xl">
+            <span class="trophy-emoji">🏆</span>
+            <h2 class="text-4xl md:text-5xl font-extrabold text-white mt-4 text-center">¡VICTORIA!</h2>
+            <p class="text-xl md:text-2xl font-semibold text-gray-900 mt-2 text-center">
+                Eres el Maestro del Laberinto.
+            </p>
+            <button id="restart-game-win" class="mt-8 control-button bg-green-600 hover:bg-green-700 text-white p-4">
+                Volver a Jugar
+            </button>
+        </section>
+
+        <!-- PANTALLA de GAME OVER (Derrota) -->
+        <section id="game-over-screen" class="hidden overlay-screen flex-col items-center justify-center p-8 bg-gradient-to-br from-red-900 to-red-700 rounded-xl shadow-2xl">
+            <span class="trophy-emoji">💀</span>
+            <h2 class="text-4xl md:text-5xl font-extrabold text-white mt-4 text-center">GAME OVER</h2>
+            <p class="text-xl md:text-2xl font-semibold text-gray-900 mt-2 text-center">
+                Te quedaste sin vidas.
+            </p>
+            <button id="restart-game-loss" class="mt-8 control-button bg-blue-600 hover:bg-blue-700 text-white p-4">
+                Intentar de Nuevo
+            </button>
+        </section>
+
+    </main>
+    
+    <footer class="mt-6 text-sm text-gray-500 text-center">
+        <p>Laberinto de Alto Riesgo v17.0</p>
+    </footer>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const gameSection = document.getElementById('game-section');
+            const trophyScreen = document.getElementById('trophy-screen');
+            const gameOverScreen = document.getElementById('game-over-screen');
+            const mazeBoard = document.getElementById('maze-board');
+            const player = document.getElementById('player');
+            const gameMessages = document.getElementById('game-messages');
+            const levelDisplay = document.getElementById('level-display');
+            const livesDisplay = document.getElementById('lives-display');
+            const gameContainer = document.getElementById('game-container');
+            
+            const restartWinButton = document.getElementById('restart-game-win');
+            const restartLossButton = document.getElementById('restart-game-loss');
+
+            const upButton = document.getElementById('up');
+            const downButton = document.getElementById('down');
+            const leftButton = document.getElementById('left');
+            const rightButton = document.getElementById('right');
+            const controlButtons = [upButton, downButton, leftButton, rightButton];
+
+            const MAX_LEVEL = 10;
+            const MAX_LIVES = 3;
+            const CELL_BORDER_WIDTH = 1;
+            const RED_WALL_CHANCE = 0.15; // 15% de probabilidad de que un muro sea peligroso
+
+            let currentLevel = 1;
+            let currentLives = MAX_LIVES;
+            let currentMaze = [];
+            let playerPos = { x: 0, y: 0 };
+            let startPos = { x: 0, y: 0 };
+            let currentCellSize = 0; 
+            let audioContextStarted = false;
+
+            // Constantes de la cuadrícula
+            const CELL_PATH = 0;    // Camino normal (seguro, bg-gray-900)
+            const CELL_WALL = 1;    // Muro normal (bloqueo, bg-gray-700)
+            const CELL_START = 2;   // Inicio (bg-green-500)
+            const CELL_END = 3;     // Meta (Amarilla, bg-yellow-500)
+            const CELL_DANGER = 4;  // Muro Rojo (Peligro, bg-red-700)
+
+            // =================================================================
+            // 1. LÓGICA DE AUDIO (TONE.JS)
+            // =================================================================
+            // Sintetizadores para sonidos de movimiento, pared.
+            const moveSynth = new Tone.PluckSynth({ attackNoise: 0.1, dampening: 4000, release: 0.2 }).toDestination();
+            const wallSynth = new Tone.NoiseSynth({
+                noise: { type: "white" },
+                envelope: { attack: 0.001, decay: 0.15, sustain: 0.0 }
+            }).toDestination();
+            
+            // Sonido de Daño (golpe contra pared roja)
+            const damageSynth = new Tone.NoiseSynth({
+                noise: { type: "pink" },
+                volume: -6, // Lo hace más fuerte
+                envelope: { attack: 0.005, decay: 0.2, sustain: 0.0 }
+            }).toDestination();
+            
+            // Sonido de Game Over: Grave y resonante (MembraneSynth para un 'hit' profundo)
+            const lossSynth = new Tone.MembraneSynth({ 
+                pitchDecay: 0.02, 
+                octaves: 2, 
+                envelope: { attack: 0.001, decay: 1.5, sustain: 0.0 } // Decay largo para resonancia
+            }).toDestination();
+            
+            const reverb = new Tone.Reverb({ decay: 2, preDelay: 0.01 }).toDestination();
+            
+            // Sampler de campanas para el sonido de victoria (mejor sonido)
+            const bellSampler = new Tone.Sampler({
+                urls: { "C4": "https://tonejs.github.io/examples/audio/casio/lowbell.mp3" },
+                onload: () => console.log("Bell sampler loaded."),
+                onerror: () => {
+                    console.warn("Sampler failed to load. Using fallback PluckSynth for win sound.");
+                    bellSampler.dispose();
+                    window.winSynthFallback = new Tone.PluckSynth({ attackNoise: 0.5, dampening: 5000, release: 0.8 }).connect(reverb);
+                }
+            }).connect(reverb);
+            
+            function startAudioContext() {
+                if (!audioContextStarted) {
+                    try {
+                        Tone.start();
+                        audioContextStarted = true;
+                    } catch (e) {
+                        console.error("Error starting audio context:", e);
+                    }
+                }
+            }
+
+            function playMoveSound() {
+                if (audioContextStarted) { moveSynth.triggerAttackRelease("C5", "8n"); }
+            }
+
+            function playWallSound() {
+                if (audioContextStarted) { wallSynth.triggerAttackRelease("16n"); }
+            }
+            
+            function playDamageSound() {
+                if (audioContextStarted) { damageSynth.triggerAttackRelease("8n"); }
+            }
+            
+            // Sonido de Game Over (Pérdida de las 3 vidas): Muy grave.
+            function playLossSound() {
+                 if (audioContextStarted) { lossSynth.triggerAttackRelease("C1", "2n"); }
+            }
+
+            // Sonido de Victoria (Trofeo)
+            function playWinSound(isFinalLevelCompleted) {
+                if (!audioContextStarted) return;
+                
+                // Si es victoria final (trofeo), toca un acorde más completo.
+                const notes = isFinalLevelCompleted ? ["C5", "E5", "G5", "C6"] : ["E5", "G5", "C6"];
+                const duration = isFinalLevelCompleted ? "1n" : "4n";
+
+                if (window.winSynthFallback) {
+                    notes.forEach((note, index) => {
+                         window.winSynthFallback.triggerAttackRelease(note, "8n", `+${index * 0.1}`);
+                    });
+                } else {
+                    notes.forEach((note, index) => {
+                        bellSampler.triggerAttackRelease(note, duration, `+${index * 0.1}`);
+                    });
+                }
+            }
+
+
+            // =================================================================
+            // 2. LÓGICA DE GENERACIÓN DEL LABERINTO
+            // =================================================================
+
+            function getMazeDimensions(level) {
+                let size = 2 * level + 5;
+                size = Math.min(25, size);
+                if (size % 2 === 0) size++;
+                return { rows: size, cols: size };
+            }
+
+            function initializeGrid(rows, cols) {
+                const grid = [];
+                for (let r = 0; r < rows; r++) {
+                    grid[r] = [];
+                    for (let c = 0; c < cols; c++) {
+                        grid[r][c] = CELL_WALL; 
+                    }
+                }
+                return grid;
+            }
+
+            // Generador de laberintos por Backtracking Recursivo
+            function generateMaze(rows, cols) {
+                let grid = initializeGrid(rows, cols);
+                const stack = [];
+                
+                const startY = 1; 
+                const startX = 1;
+
+                grid[startY][startX] = CELL_START; 
+                startPos = {y: startY, x: startX};
+                stack.push([startY, startX]);
+
+                const directions = [[0, -2], [0, 2], [-2, 0], [2, 0]]; 
+
+                // 1. Generación del laberinto (camino y paredes normales)
+                while (stack.length > 0) {
+                    const [y, x] = stack[stack.length - 1]; 
+                    
+                    let unvisitedNeighbors = [];
+                    directions.sort(() => Math.random() - 0.5); 
+
+                    for (const [dy, dx] of directions) {
+                        const ny = y + dy;
+                        const nx = x + dx;
+
+                        if (ny > 0 && ny < rows - 1 && nx > 0 && nx < cols - 1 && grid[ny][nx] === CELL_WALL) {
+                            unvisitedNeighbors.push([ny, nx, dy, dx]);
+                        }
+                    }
+
+                    if (unvisitedNeighbors.length > 0) {
+                        const [ny, nx, dy, dx] = unvisitedNeighbors[Math.floor(Math.random() * unvisitedNeighbors.length)];
+                        
+                        const wallY = y + dy / 2;
+                        const wallX = x + dx / 2;
+
+                        grid[wallY][wallX] = CELL_PATH; 
+                        grid[ny][nx] = CELL_PATH; 
+                        stack.push([ny, nx]); 
+                    } else {
+                        stack.pop(); 
+                    }
+                }
+                
+                // 2. Colocar la meta (CELL_END)
+                let endPlaced = false;
+                for (let r = rows - 2; r >= 1; r--) {
+                    for (let c = cols - 2; c >= 1; c--) {
+                        if (grid[r][c] === CELL_PATH) { 
+                            if (!endPlaced) {
+                                // Coloca la meta en el primer camino encontrado desde el final
+                                grid[r][c] = CELL_END; 
+                                endPlaced = true;
+                                break; 
+                            }
+                        }
+                    }
+                    if (endPlaced) break;
+                }
+
+                // 3. Modificar los muros normales (CELL_WALL) a muros peligrosos (CELL_DANGER)
+                for (let r = 0; r < rows; r++) {
+                    for (let c = 0; c < cols; c++) {
+                        // Si la celda es un muro normal (1), hay una probabilidad de convertirla en peligroso (4)
+                        if (grid[r][c] === CELL_WALL && Math.random() < RED_WALL_CHANCE) {
+                            grid[r][c] = CELL_DANGER; 
+                        }
+                    }
+                }
+
+                return grid;
+            }
+
+            // =================================================================
+            // 3. LÓGICA DE JUEGO Y CONTROL
+            // =================================================================
+            
+            function updateLivesDisplay() {
+                livesDisplay.innerHTML = Array(currentLives).fill('❤️').join('');
+                if (currentLives === 0) {
+                    livesDisplay.innerHTML = '💀';
+                }
+            }
+
+            function initGame() {
+                currentLevel = 1;
+                currentLives = MAX_LIVES;
+                initLevel();
+            }
+
+            function initLevel() {
+                if (currentLevel > MAX_LEVEL) {
+                    // Si el nivel es mayor al máximo, el jugador ganó el trofeo.
+                    gameOverScreen.classList.add('hidden');
+                    gameSection.classList.add('hidden');
+                    trophyScreen.classList.remove('hidden');
+                    return;
+                }
+                if (currentLives <= 0) {
+                    gameOver();
+                    return;
+                }
+
+                gameSection.classList.remove('hidden');
+                trophyScreen.classList.add('hidden');
+                gameOverScreen.classList.add('hidden');
+
+                const { rows, cols } = getMazeDimensions(currentLevel);
+                currentMaze = generateMaze(rows, cols);
+                
+                levelDisplay.textContent = `Nivel ${currentLevel} (${rows}x${cols})`;
+                gameMessages.textContent = `Nivel ${currentLevel} cargado. ¡Cuidado con el ROJO!`;
+                
+                updateLivesDisplay();
+
+                // Cálculo Dinámico del Tamaño de Celda
+                const containerRect = gameContainer.getBoundingClientRect();
+                const availableWidth = containerRect.width - 8; 
+                currentCellSize = Math.floor(availableWidth / cols); 
+
+                const newWidth = cols * currentCellSize;
+                const newHeight = rows * currentCellSize;
+                
+                mazeBoard.style.width = `${newWidth}px`;
+                mazeBoard.style.height = `${newHeight}px`;
+
+                mazeBoard.style.gridTemplateColumns = `repeat(${cols}, ${currentCellSize}px)`;
+                mazeBoard.style.gridTemplateRows = `repeat(${rows}, ${currentCellSize}px)`;
+
+                generateMazeHTML(currentMaze); 
+                player.classList.remove('player-win-animation'); 
+            }
+
+            function resetPlayerToStart() {
+                playerPos.x = startPos.x;
+                playerPos.y = startPos.y;
+                updatePlayerPosition();
+            }
+            
+            function gameOver() {
+                // Sonido de Game Over: se activa aquí, para cuando las vidas llegan a cero
+                playLossSound(); 
+                gameSection.classList.add('hidden');
+                gameOverScreen.classList.remove('hidden');
+            }
+
+            function generateMazeHTML(mazeData) {
+                mazeBoard.innerHTML = ''; 
+                for (let row = 0; row < mazeData.length; row++) {
+                    for (let col = 0; col < mazeData[row].length; col++) {
+                        const cell = document.createElement('div');
+                        cell.classList.add('maze-cell', 'border-gray-800');
+                        
+                        const cellDimension = currentCellSize - 2 * CELL_BORDER_WIDTH;
+                        cell.style.width = `${cellDimension}px`; 
+                        cell.style.height = `${cellDimension}px`;
+
+                        switch (mazeData[row][col]) {
+                            case CELL_PATH: cell.classList.add('bg-gray-900'); break; 
+                            case CELL_WALL: cell.classList.add('bg-gray-700'); break; // Muro normal
+                            case CELL_START: 
+                                cell.classList.add('bg-green-500', 'shadow-inner', 'shadow-green-700'); 
+                                playerPos = { y: row, x: col }; 
+                                startPos = { y: row, x: col };
+                                break;
+                            case CELL_END: 
+                                // Meta: Color AMARILLO
+                                cell.classList.add('bg-yellow-500', 'shadow-inner', 'shadow-yellow-700'); 
+                                break;
+                            case CELL_DANGER:
+                                // Muro Peligroso: ROJO (con animación)
+                                cell.classList.add('bg-red-700', 'danger-wall');
+                                break;
+                        }
+                        mazeBoard.appendChild(cell);
+                    }
+                }
+                
+                player.style.width = `${currentCellSize - 2 * CELL_BORDER_WIDTH - 2}px`;
+                player.style.height = `${currentCellSize - 2 * CELL_BORDER_WIDTH - 2}px`;
+
+                updatePlayerPosition();
+            }
+
+            function updatePlayerPosition() {
+                player.style.left = `${playerPos.x * currentCellSize + 1}px`;
+                player.style.top = `${playerPos.y * currentCellSize + 1}px`;
+            }
+
+            function movePlayer(dx, dy) {
+                startAudioContext(); 
+                
+                if (currentLevel > MAX_LEVEL || currentLives <= 0) return; 
+
+                const newX = playerPos.x + dx;
+                const newY = playerPos.y + dy;
+
+                if (newX >= 0 && newX < currentMaze[0].length && newY >= 0 && newY < currentMaze.length) {
+                    const nextCellType = currentMaze[newY][newX];
+                    
+                    if (nextCellType === CELL_WALL) { 
+                        // Colisión con Muro Normal (no pierde vida)
+                        playWallSound();
+                        gameMessages.textContent = '¡Muro! Prueba otra dirección.';
+                        return;
+                    }
+                    
+                    if (nextCellType === CELL_DANGER) {
+                        // Colisión con Muro Peligroso (pierde vida y reinicia)
+                        playDamageSound(); // Sonido de daño individual
+                        
+                        currentLives--;
+                        updateLivesDisplay();
+                        
+                        if (currentLives <= 0) {
+                            // Si se queda sin vidas, llama a gameOver
+                            gameOver();
+                            return;
+                        }
+
+                        gameMessages.textContent = `¡PELIGRO ROJO! Pierdes 1 vida. Vidas restantes: ${currentLives}`;
+                        resetPlayerToStart();
+                        return;
+                    }
+                    
+                    // Movimiento Exitoso (Path, Start, or End)
+                    playerPos.x = newX;
+                    playerPos.y = newY;
+                    updatePlayerPosition();
+                    gameMessages.textContent = ''; 
+                    playMoveSound();
+
+                    if (nextCellType === CELL_END) {
+                        player.classList.add('player-win-animation');
+                        
+                        // Determina si este es el último nivel que se está completando.
+                        const isFinalLevelCompleted = currentLevel === MAX_LEVEL;
+
+                        if (isFinalLevelCompleted) {
+                            gameMessages.textContent = `¡Nivel FINAL COMPLETADO! Reclamando el Trofeo...`;
+                        } else {
+                            gameMessages.textContent = `¡Nivel ${currentLevel} Completado! ¡Siguiente desafío!`;
+                        }
+                        
+                        // Sonido de Victoria: Toca un acorde diferente si es la victoria final
+                        playWinSound(isFinalLevelCompleted); 
+                        
+                        setTimeout(() => {
+                            currentLevel++;
+                            initLevel();
+                        }, 1000); 
+                    }
+                }
+            }
+
+            // ******* EVENT LISTENERS *******
+            controlButtons.forEach(button => {
+                button.addEventListener('click', (e) => {
+                    e.preventDefault(); 
+                    // Usamos e.currentTarget para asegurarnos de obtener el ID del botón, no del SVG
+                    const targetId = e.currentTarget.id; 
+                    if (targetId === 'up') movePlayer(0, -1);
+                    else if (targetId === 'down') movePlayer(0, 1);
+                    else if (targetId === 'left') movePlayer(-1, 0);
+                    else if (targetId === 'right') movePlayer(1, 0);
+                });
+            });
+            
+            // Botones para reiniciar el juego
+            restartWinButton.addEventListener('click', initGame);
+            restartLossButton.addEventListener('click', initGame);
+
+            // Iniciar el contexto de audio en el primer clic/tap en cualquier parte del documento
+            document.body.addEventListener('click', startAudioContext, { once: true });
+            document.body.addEventListener('touchstart', startAudioContext, { once: true });
+
+            window.addEventListener('resize', initLevel);
+
+            // Inicia el juego
+            initGame();
+        });
+    </script>
+</body>
+</html>
