@@ -3,10 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Laberinto Táctil (Audio Mejorado)</title>
+    <title>Laberinto Táctil (Meta Blanca)</title>
     
-    <!-- Carga de Tailwind CSS -->
-    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Carga de Tailwind CSS --><script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
             theme: {
@@ -19,8 +18,7 @@
         }
     </script>
     
-    <!-- Carga de Tone.js para los efectos de sonido -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+    <!-- Carga de Tone.js para los efectos de sonido --><script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
 
     <style>
         /* Estilos base */
@@ -103,20 +101,17 @@
     
     <header class="text-center mb-6">
         <h1 class="text-3xl md:text-4xl font-bold text-green-400">Laberinto Peligroso</h1>
-        <p class="mt-1 text-gray-400 text-sm md:text-base">¡Cuidado! Algunos muros quitan vida. Meta amarilla.</p>
+        <p class="mt-1 text-gray-400 text-sm md:text-base">¡Cuidado! Algunos muros quitan vida. Meta blanca.</p>
     </header>    
     
     <main class="w-full max-w-md">
         
-        <!-- PANTALLA DE JUEGO PRINCIPAL -->
-        <section id="game-section" class="flex flex-col gap-4 bg-gray-800 p-4 md:p-6 rounded-xl shadow-2xl items-center">
+        <!-- PANTALLA DE JUEGO PRINCIPAL --><section id="game-section" class="flex flex-col gap-4 bg-gray-800 p-4 md:p-6 rounded-xl shadow-2xl items-center">
             
-            <!-- Indicadores de Vidas y Nivel -->
-            <div class="flex justify-between w-full mb-2">
+            <!-- Indicadores de Vidas y Nivel --><div class="flex justify-between w-full mb-2">
                 <div id="lives-display" class="text-3xl text-red-500 font-extrabold flex items-center space-x-1">
-                    <!-- Se llena con corazones en JS -->
-                </div>
-                <div id="level-display" class="text-2xl font-extrabold text-yellow-300">Nivel 1</div>
+                    <!-- Se llena con corazones en JS --></div>
+                <div id="level-display" class="text-2xl font-extrabold text-white">Nivel 1</div>
             </div>
 
             <article id="game-container" 
@@ -128,53 +123,45 @@
                 <div id="player" class="bg-blue-500 rounded-full absolute z-10 shadow-lg shadow-blue-500/50"></div>
             </article>
             
-            <!-- Controles Táctiles (D-Pad) MÁS COMPACTOS -->
-            <div id="controls" class="flex flex-col items-center mt-4 p-6 bg-gray-700 rounded-xl w-full max-w-sm">
+            <!-- Controles Táctiles (D-Pad) MÁS COMPACTOS --><div id="controls" class="flex flex-col items-center mt-4 p-6 bg-gray-700 rounded-xl w-full max-w-sm">
                 
-                <!-- UP Button -->
-                <button id="up" class="control-button mb-2">
+                <!-- UP Button --><button id="up" class="control-button mb-2">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M12 19V5M5 12L12 5L19 12"/>
                     </svg>
                 </button>
                 
                 <div class="flex space-x-2">
-                    <!-- LEFT Button -->
-                    <button id="left" class="control-button">
+                    <!-- LEFT Button --><button id="left" class="control-button">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                             <path d="M19 12H5M12 5L5 12L12 19"/>
                         </svg>
                     </button>
                     
-                    <!-- Espaciador que coincide con el tamaño del botón -->
-                    <div class="w-[48px] h-[48px]"></div> 
+                    <!-- Espaciador que coincide con el tamaño del botón --><div class="w-[48px] h-[48px]"></div> 
                     
-                    <!-- RIGHT Button -->
-                    <button id="right" class="control-button">
+                    <!-- RIGHT Button --><button id="right" class="control-button">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                             <path d="M5 12H19M12 5L19 12L12 19"/>
                         </svg>
                     </button>
                 </div>
                 
-                <!-- DOWN Button -->
-                <button id="down" class="control-button mt-2">
+                <!-- DOWN Button --><button id="down" class="control-button mt-2">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M12 5V19M19 12L12 19L5 12"/>
                     </svg>
                 </button>
             </div>
 
-            <!-- Mensajes de Estado -->
-            <aside id="game-sidebar" class="bg-gray-700 p-3 rounded-lg w-full mt-4">
-                <h3 class="text-lg font-semibold mb-2 text-yellow-300">Estado:</h3>
-                <div id="game-messages" class="text-base font-medium text-yellow-100 min-h-[24px]"></div>
+            <!-- Mensajes de Estado --><aside id="game-sidebar" class="bg-gray-700 p-3 rounded-lg w-full mt-4">
+                <h3 class="text-lg font-semibold mb-2 text-white">Estado:</h3>
+                <div id="game-messages" class="text-base font-medium text-white min-h-[24px]"></div>
             </aside>
             
         </section>
         
-        <!-- PANTALLA DE TROFEO (Victoria) -->
-        <section id="trophy-screen" class="hidden overlay-screen flex-col items-center justify-center p-8 bg-gradient-to-br from-yellow-900 to-yellow-600 rounded-xl shadow-2xl">
+        <!-- PANTALLA DE TROFEO (Victoria) --><section id="trophy-screen" class="hidden overlay-screen flex-col items-center justify-center p-8 bg-gradient-to-br from-yellow-900 to-yellow-600 rounded-xl shadow-2xl">
             <span class="trophy-emoji">🏆</span>
             <h2 class="text-4xl md:text-5xl font-extrabold text-white mt-4 text-center">¡VICTORIA!</h2>
             <p class="text-xl md:text-2xl font-semibold text-gray-900 mt-2 text-center">
@@ -185,8 +172,7 @@
             </button>
         </section>
 
-        <!-- PANTALLA de GAME OVER (Derrota) -->
-        <section id="game-over-screen" class="hidden overlay-screen flex-col items-center justify-center p-8 bg-gradient-to-br from-red-900 to-red-700 rounded-xl shadow-2xl">
+        <!-- PANTALLA de GAME OVER (Derrota) --><section id="game-over-screen" class="hidden overlay-screen flex-col items-center justify-center p-8 bg-gradient-to-br from-red-900 to-red-700 rounded-xl shadow-2xl">
             <span class="trophy-emoji">💀</span>
             <h2 class="text-4xl md:text-5xl font-extrabold text-white mt-4 text-center">GAME OVER</h2>
             <p class="text-xl md:text-2xl font-semibold text-gray-900 mt-2 text-center">
@@ -200,7 +186,7 @@
     </main>
     
     <footer class="mt-6 text-sm text-gray-500 text-center">
-        <p>Laberinto de Alto Riesgo v17.0</p>
+        <p>Laberinto de Alto Riesgo v18.0</p>
     </footer>
 
     <script>
@@ -241,7 +227,8 @@
             const CELL_PATH = 0;    // Camino normal (seguro, bg-gray-900)
             const CELL_WALL = 1;    // Muro normal (bloqueo, bg-gray-700)
             const CELL_START = 2;   // Inicio (bg-green-500)
-            const CELL_END = 3;     // Meta (Amarilla, bg-yellow-500)
+            // CAMBIADO: Meta ahora es BLANCA
+            const CELL_END = 3;     // Meta (Blanca, bg-white)
             const CELL_DANGER = 4;  // Muro Rojo (Peligro, bg-red-700)
 
             // =================================================================
@@ -453,6 +440,10 @@
                     gameOver();
                     return;
                 }
+                      if (currentLives <= 0) {
+                    gameOver();
+                    return;
+                }
 
                 gameSection.classList.remove('hidden');
                 trophyScreen.classList.add('hidden');
@@ -462,7 +453,7 @@
                 currentMaze = generateMaze(rows, cols);
                 
                 levelDisplay.textContent = `Nivel ${currentLevel} (${rows}x${cols})`;
-                gameMessages.textContent = `Nivel ${currentLevel} cargado. ¡Cuidado con el ROJO!`;
+                gameMessages.textContent = `Nivel ${currentLevel} cargado. ¡Cuidado con el ROJO! Meta blanca.`; // Texto actualizado
                 
                 updateLivesDisplay();
 
@@ -517,8 +508,8 @@
                                 startPos = { y: row, x: col };
                                 break;
                             case CELL_END: 
-                                // Meta: Color AMARILLO
-                                cell.classList.add('bg-yellow-500', 'shadow-inner', 'shadow-yellow-700'); 
+                                // Meta: Color BLANCO
+                                cell.classList.add('bg-white', 'shadow-inner', 'shadow-gray-300'); 
                                 break;
                             case CELL_DANGER:
                                 // Muro Peligroso: ROJO (con animación)
