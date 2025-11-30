@@ -3,9 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Laberinto Táctil (Meta Blanca)</title>
+    <title>Laberinto Táctil (Tiempo Limitado 60s)</title>
     
-    <!-- Carga de Tailwind CSS --><script src="https://cdn.tailwindcss.com"></script>
+    <!-- Carga de Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
             theme: {
@@ -18,7 +19,8 @@
         }
     </script>
     
-    <!-- Carga de Tone.js para los efectos de sonido --><script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+    <!-- Carga de Tone.js para el Audio -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
 
     <style>
         /* Estilos base */
@@ -90,10 +92,20 @@
             60% { transform: translateY(-15px); }
         }
         body {
+            /* Deshabilita la selección de texto para mejor experiencia táctil */
             -webkit-user-select: none;
             -moz-user-select: none;
             -ms-user-select: none;
             user-select: none; 
+        }
+
+        /* Estilo para el cronómetro que parpadea */
+        .time-warning {
+            animation: blink 0.5s step-end infinite alternate;
+        }
+        @keyframes blink {
+            from { opacity: 1; }
+            to { opacity: 0.5; }
         }
     </style>
 </head>
@@ -101,19 +113,29 @@
     
     <header class="text-center mb-6">
         <h1 class="text-3xl md:text-4xl font-bold text-green-400">Laberinto Peligroso</h1>
-        <p class="mt-1 text-gray-400 text-sm md:text-base">¡Cuidado! Algunos muros quitan vida. Meta blanca.</p>
+        <p class="mt-1 text-gray-400 text-sm md:text-base">¡60 segundos para escapar del nivel! Meta blanca.</p>
     </header>    
     
     <main class="w-full max-w-md">
         
-        <!-- PANTALLA DE JUEGO PRINCIPAL --><section id="game-section" class="flex flex-col gap-4 bg-gray-800 p-4 md:p-6 rounded-xl shadow-2xl items-center">
+        <!-- SECCIÓN PRINCIPAL DEL JUEGO -->
+        <section id="game-section" class="flex flex-col gap-4 bg-gray-800 p-4 md:p-6 rounded-xl shadow-2xl items-center">
             
-            <!-- Indicadores de Vidas y Nivel --><div class="flex justify-between w-full mb-2">
+            <!-- PANEL DE INFORMACIÓN (VIDAS, NIVEL, TIEMPO) -->
+            <div class="flex justify-between w-full mb-2 items-center">
                 <div id="lives-display" class="text-3xl text-red-500 font-extrabold flex items-center space-x-1">
-                    <!-- Se llena con corazones en JS --></div>
+                    <!-- Los corazones van aquí -->
+                </div>
+                
+                <!-- CRONÓMETRO AGREGADO -->
+                <div id="timer-display" class="text-3xl font-extrabold text-yellow-400">
+                    60
+                </div>
+                
                 <div id="level-display" class="text-2xl font-extrabold text-white">Nivel 1</div>
             </div>
 
+            <!-- CONTENEDOR DEL TABLERO Y JUGADOR -->
             <article id="game-container" 
                 tabindex="0" 
                 class="border-4 border-gray-600 bg-gray-900 p-px relative rounded-lg flex-shrink-0 mx-auto focus:outline-none w-full"
@@ -123,45 +145,49 @@
                 <div id="player" class="bg-blue-500 rounded-full absolute z-10 shadow-lg shadow-blue-500/50"></div>
             </article>
             
-            <!-- Controles Táctiles (D-Pad) MÁS COMPACTOS --><div id="controls" class="flex flex-col items-center mt-4 p-6 bg-gray-700 rounded-xl w-full max-w-sm">
+            <!-- CONTROLES TÁCTILES -->
+            <div id="controls" class="flex flex-col items-center mt-4 p-6 bg-gray-700 rounded-xl w-full max-w-sm">
                 
-                <!-- UP Button --><button id="up" class="control-button mb-2">
+                <button id="up" class="control-button mb-2">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M12 19V5M5 12L12 5L19 12"/>
                     </svg>
                 </button>
                 
                 <div class="flex space-x-2">
-                    <!-- LEFT Button --><button id="left" class="control-button">
+                    
+                    <button id="left" class="control-button">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                             <path d="M19 12H5M12 5L5 12L12 19"/>
                         </svg>
                     </button>
                     
-                    <!-- Espaciador que coincide con el tamaño del botón --><div class="w-[48px] h-[48px]"></div> 
+                    <div class="w-[48px] h-[48px]"></div> 
                     
-                    <!-- RIGHT Button --><button id="right" class="control-button">
+                    <button id="right" class="control-button">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                             <path d="M5 12H19M12 5L19 12L12 19"/>
                         </svg>
                     </button>
                 </div>
                 
-                <!-- DOWN Button --><button id="down" class="control-button mt-2">
+                <button id="down" class="control-button mt-2">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M12 5V19M19 12L12 19L5 12"/>
                     </svg>
                 </button>
             </div>
 
-            <!-- Mensajes de Estado --><aside id="game-sidebar" class="bg-gray-700 p-3 rounded-lg w-full mt-4">
+            <!-- MENSAJES DEL JUEGO -->
+            <aside id="game-sidebar" class="bg-gray-700 p-3 rounded-lg w-full mt-4">
                 <h3 class="text-lg font-semibold mb-2 text-white">Estado:</h3>
                 <div id="game-messages" class="text-base font-medium text-white min-h-[24px]"></div>
             </aside>
             
         </section>
         
-        <!-- PANTALLA DE TROFEO (Victoria) --><section id="trophy-screen" class="hidden overlay-screen flex-col items-center justify-center p-8 bg-gradient-to-br from-yellow-900 to-yellow-600 rounded-xl shadow-2xl">
+        <!-- PANTALLA DE VICTORIA FINAL -->
+        <section id="trophy-screen" class="hidden overlay-screen flex-col items-center justify-center p-8 bg-gradient-to-br from-yellow-900 to-yellow-600 rounded-xl shadow-2xl">
             <span class="trophy-emoji">🏆</span>
             <h2 class="text-4xl md:text-5xl font-extrabold text-white mt-4 text-center">¡VICTORIA!</h2>
             <p class="text-xl md:text-2xl font-semibold text-gray-900 mt-2 text-center">
@@ -172,10 +198,11 @@
             </button>
         </section>
 
-        <!-- PANTALLA de GAME OVER (Derrota) --><section id="game-over-screen" class="hidden overlay-screen flex-col items-center justify-center p-8 bg-gradient-to-br from-red-900 to-red-700 rounded-xl shadow-2xl">
+        <!-- PANTALLA DE GAME OVER -->
+        <section id="game-over-screen" class="hidden overlay-screen flex-col items-center justify-center p-8 bg-gradient-to-br from-red-900 to-red-700 rounded-xl shadow-2xl">
             <span class="trophy-emoji">💀</span>
             <h2 class="text-4xl md:text-5xl font-extrabold text-white mt-4 text-center">GAME OVER</h2>
-            <p class="text-xl md:text-2xl font-semibold text-gray-900 mt-2 text-center">
+            <p id="game-over-reason" class="text-xl md:text-2xl font-semibold text-gray-900 mt-2 text-center">
                 Te quedaste sin vidas.
             </p>
             <button id="restart-game-loss" class="mt-8 control-button bg-blue-600 hover:bg-blue-700 text-white p-4">
@@ -186,7 +213,7 @@
     </main>
     
     <footer class="mt-6 text-sm text-gray-500 text-center">
-        <p>Laberinto de Alto Riesgo v18.0</p>
+        <p>Laberinto de Alto Riesgo v19.0 (Con Cronómetro)</p>
     </footer>
 
     <script>
@@ -194,11 +221,13 @@
             const gameSection = document.getElementById('game-section');
             const trophyScreen = document.getElementById('trophy-screen');
             const gameOverScreen = document.getElementById('game-over-screen');
+            const gameOverReason = document.getElementById('game-over-reason'); // Razón de Game Over
             const mazeBoard = document.getElementById('maze-board');
             const player = document.getElementById('player');
             const gameMessages = document.getElementById('game-messages');
             const levelDisplay = document.getElementById('level-display');
             const livesDisplay = document.getElementById('lives-display');
+            const timerDisplay = document.getElementById('timer-display'); // Elemento del Cronómetro
             const gameContainer = document.getElementById('game-container');
             
             const restartWinButton = document.getElementById('restart-game-win');
@@ -209,11 +238,13 @@
             const leftButton = document.getElementById('left');
             const rightButton = document.getElementById('right');
             const controlButtons = [upButton, downButton, leftButton, rightButton];
-
+            
+              // Constantes de Tiempo y Nivel
             const MAX_LEVEL = 10;
             const MAX_LIVES = 3;
             const CELL_BORDER_WIDTH = 1;
             const RED_WALL_CHANCE = 0.15; // 15% de probabilidad de que un muro sea peligroso
+            const TIME_PER_LEVEL_SECONDS = 60; // 60 segundos por nivel
 
             let currentLevel = 1;
             let currentLives = MAX_LIVES;
@@ -222,12 +253,12 @@
             let startPos = { x: 0, y: 0 };
             let currentCellSize = 0; 
             let audioContextStarted = false;
+            let timerInterval = null; // Variable para almacenar el ID del setInterval
 
             // Constantes de la cuadrícula
             const CELL_PATH = 0;    // Camino normal (seguro, bg-gray-900)
             const CELL_WALL = 1;    // Muro normal (bloqueo, bg-gray-700)
             const CELL_START = 2;   // Inicio (bg-green-500)
-            // CAMBIADO: Meta ahora es BLANCA
             const CELL_END = 3;     // Meta (Blanca, bg-white)
             const CELL_DANGER = 4;  // Muro Rojo (Peligro, bg-red-700)
 
@@ -291,7 +322,7 @@
                 if (audioContextStarted) { damageSynth.triggerAttackRelease("8n"); }
             }
             
-            // Sonido de Game Over (Pérdida de las 3 vidas): Muy grave.
+            // Sonido de Game Over (Pérdida de las 3 vidas o tiempo agotado)
             function playLossSound() {
                  if (audioContextStarted) { lossSynth.triggerAttackRelease("C1", "2n"); }
             }
@@ -338,7 +369,6 @@
                 return grid;
             }
 
-            // Generador de laberintos por Backtracking Recursivo
             function generateMaze(rows, cols) {
                 let grid = initializeGrid(rows, cols);
                 const stack = [];
@@ -412,7 +442,55 @@
             }
 
             // =================================================================
-            // 3. LÓGICA DE JUEGO Y CONTROL
+            // 3. LÓGICA DEL CRONÓMETRO (NUEVA FUNCIÓN)
+            // =================================================================
+            let timeLeft = TIME_PER_LEVEL_SECONDS;
+
+            function startTimer() {
+                // Asegura que no haya otro cronómetro corriendo
+                if (timerInterval) clearInterval(timerInterval);
+                
+                timeLeft = TIME_PER_LEVEL_SECONDS;
+                timerDisplay.textContent = timeLeft;
+                timerDisplay.classList.remove('time-warning', 'text-red-500');
+                timerDisplay.classList.add('text-yellow-400');
+
+                timerInterval = setInterval(() => {
+                    timeLeft--;
+                    timerDisplay.textContent = timeLeft;
+
+                    // Aviso visual y sonoro cuando quedan 10 segundos
+                    if (timeLeft <= 10 && timeLeft > 0) {
+                        timerDisplay.classList.add('time-warning', 'text-red-500');
+                        timerDisplay.classList.remove('text-yellow-400');
+                        // Tocar un pequeño sonido de advertencia si el audio está activo
+                        if (audioContextStarted) { wallSynth.triggerAttackRelease("A3", "32n"); }
+                    } else if (timeLeft > 10) {
+                        timerDisplay.classList.remove('time-warning', 'text-red-500');
+                        timerDisplay.classList.add('text-yellow-400');
+                    }
+                    
+                    // Condición de pérdida por tiempo
+                    if (timeLeft <= 0) {
+                        clearInterval(timerInterval);
+                        // Llamar a la función de Game Over con la razón de pérdida
+                        gameOver("¡Se acabó el tiempo!");
+                    }
+                }, 1000); // Se ejecuta cada 1000 milisegundos (1 segundo)
+            }
+
+            function stopTimer() {
+                if (timerInterval) {
+                    clearInterval(timerInterval);
+                    timerInterval = null;
+                    timerDisplay.classList.remove('time-warning', 'text-red-500');
+                    timerDisplay.classList.add('text-yellow-400');
+                }
+            }
+
+
+            // =================================================================
+            // 4. LÓGICA DE JUEGO Y CONTROL (MODIFICADA)
             // =================================================================
             
             function updateLivesDisplay() {
@@ -425,23 +503,22 @@
             function initGame() {
                 currentLevel = 1;
                 currentLives = MAX_LIVES;
+                stopTimer();
                 initLevel();
             }
 
             function initLevel() {
                 if (currentLevel > MAX_LEVEL) {
-                    // Si el nivel es mayor al máximo, el jugador ganó el trofeo.
+                    // Victoria Final
+                    stopTimer(); 
                     gameOverScreen.classList.add('hidden');
                     gameSection.classList.add('hidden');
                     trophyScreen.classList.remove('hidden');
                     return;
                 }
                 if (currentLives <= 0) {
-                    gameOver();
-                    return;
-                }
-                      if (currentLives <= 0) {
-                    gameOver();
+                    // Pérdida por Vidas
+                    gameOver("Te quedaste sin vidas.");
                     return;
                 }
 
@@ -453,11 +530,11 @@
                 currentMaze = generateMaze(rows, cols);
                 
                 levelDisplay.textContent = `Nivel ${currentLevel} (${rows}x${cols})`;
-                gameMessages.textContent = `Nivel ${currentLevel} cargado. ¡Cuidado con el ROJO! Meta blanca.`; // Texto actualizado
+                gameMessages.textContent = `Nivel ${currentLevel} cargado. ¡TIEMPO CORRIENDO!`; 
                 
                 updateLivesDisplay();
 
-                // Cálculo Dinámico del Tamaño de Celda
+                // CÁLCULO DEL TAMAÑO DE CELDA Y RENDERIZADO DEL LABERINTO
                 const containerRect = gameContainer.getBoundingClientRect();
                 const availableWidth = containerRect.width - 8; 
                 currentCellSize = Math.floor(availableWidth / cols); 
@@ -473,6 +550,9 @@
 
                 generateMazeHTML(currentMaze); 
                 player.classList.remove('player-win-animation'); 
+                
+                // INICIA EL CRONÓMETRO AL INICIAR EL NIVEL
+                startTimer();
             }
 
             function resetPlayerToStart() {
@@ -481,10 +561,11 @@
                 updatePlayerPosition();
             }
             
-            function gameOver() {
-                // Sonido de Game Over: se activa aquí, para cuando las vidas llegan a cero
+            function gameOver(reason) {
+                stopTimer(); // Detener el tiempo inmediatamente
                 playLossSound(); 
                 gameSection.classList.add('hidden');
+                gameOverReason.textContent = reason; // Mostrar la razón de la pérdida
                 gameOverScreen.classList.remove('hidden');
             }
 
@@ -534,7 +615,8 @@
             function movePlayer(dx, dy) {
                 startAudioContext(); 
                 
-                if (currentLevel > MAX_LEVEL || currentLives <= 0) return; 
+                // Deshabilitar movimiento si el juego terminó o el tiempo acabó
+                if (currentLevel > MAX_LEVEL || currentLives <= 0 || timeLeft <= 0) return; 
 
                 const newX = playerPos.x + dx;
                 const newY = playerPos.y + dy;
@@ -551,14 +633,14 @@
                     
                     if (nextCellType === CELL_DANGER) {
                         // Colisión con Muro Peligroso (pierde vida y reinicia)
-                        playDamageSound(); // Sonido de daño individual
+                        playDamageSound(); 
                         
                         currentLives--;
                         updateLivesDisplay();
                         
                         if (currentLives <= 0) {
                             // Si se queda sin vidas, llama a gameOver
-                            gameOver();
+                            gameOver("Te quedaste sin vidas.");
                             return;
                         }
 
@@ -576,8 +658,8 @@
 
                     if (nextCellType === CELL_END) {
                         player.classList.add('player-win-animation');
+                        stopTimer(); // Detener el cronómetro al ganar
                         
-                        // Determina si este es el último nivel que se está completando.
                         const isFinalLevelCompleted = currentLevel === MAX_LEVEL;
 
                         if (isFinalLevelCompleted) {
@@ -586,12 +668,11 @@
                             gameMessages.textContent = `¡Nivel ${currentLevel} Completado! ¡Siguiente desafío!`;
                         }
                         
-                        // Sonido de Victoria: Toca un acorde diferente si es la victoria final
                         playWinSound(isFinalLevelCompleted); 
                         
                         setTimeout(() => {
                             currentLevel++;
-                            initLevel();
+                            initLevel(); // Esto reiniciará el timer para el siguiente nivel
                         }, 1000); 
                     }
                 }
@@ -601,7 +682,6 @@
             controlButtons.forEach(button => {
                 button.addEventListener('click', (e) => {
                     e.preventDefault(); 
-                    // Usamos e.currentTarget para asegurarnos de obtener el ID del botón, no del SVG
                     const targetId = e.currentTarget.id; 
                     if (targetId === 'up') movePlayer(0, -1);
                     else if (targetId === 'down') movePlayer(0, 1);
